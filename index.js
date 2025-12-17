@@ -8,7 +8,7 @@ async function sendDailyWord() {
   try {
     console.log('🤖 Gemini에게 단어 요청 중...');
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `오늘의 실용적인 영어 단어 1개를 추천해줘.
 
