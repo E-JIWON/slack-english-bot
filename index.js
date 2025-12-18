@@ -1,197 +1,89 @@
 import { WebClient } from '@slack/web-api';
+import OpenAI from 'openai';
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
-
-// 학습할 단어 리스트 (매일 이 중에서 선택)
-const wordList = [
-  'serendipity',
-  'resilient',
-  'pragmatic',
-  'articulate',
-  'nuance',
-  'ambiguous',
-  'meticulous',
-  'ephemeral',
-  'ubiquitous',
-  'profound',
-  'advocate',
-  'diligent',
-  'candid',
-  'concise',
-  'versatile',
-  'deteriorate',
-  'incentive',
-  'mitigate',
-  'leverage',
-  'adjacent',
-  'coherent',
-  'compelling',
-  'viable',
-  'ambivalent',
-  'comprehensive',
-  'eloquent',
-  'inevitable',
-  'legitimate',
-  'meager',
-  'obsolete',
-  'persistent',
-  'reluctant',
-  'subtle',
-  'trivial',
-  'unprecedented',
-  'vigorous',
-  'arbitrary',
-  'benevolent',
-  'compatible',
-  'deliberate',
-  'elaborate',
-  'feasible',
-  'gratitude',
-  'hostile',
-  'imminent',
-  'justify',
-  'keen',
-  'legitimate',
-  'marginal',
-  'negligible',
-  'optimistic',
-  'preliminary',
-  'genuine',
-  'rigorous',
-  'sustainable',
-  'tangible',
-  'unanimous',
-  'vulnerable',
-  'adequate',
-  'bias',
-  'collaborate',
-  'diverse',
-  'enhance',
-  'facilitate',
-  'generate',
-  'hierarchy',
-  'inevitable',
-  'jurisdiction',
-  'manipulate',
-  'neutral',
-  'objective',
-  'paradigm',
-  'controversy',
-  'rigid',
-  'subsequent',
-  'tangible',
-  'undermine',
-  'valid',
-  'welfare',
-  'abolish',
-  'consensus',
-  'dedicate',
-  'emphasize',
-  'finite',
-  'guarantee',
-  'hypothesis',
-  'implement',
-  'integrate',
-  'maintain',
-  'notion',
-  'overcome',
-  'perceive',
-  'ratio',
-  'significant',
-  'transform',
-];
-
-async function fetchWordDefinition(word) {
-  try {
-    const response = await fetch(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
-    );
-
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data[0]; // 첫 번째 결과 사용
-  } catch (error) {
-    console.error(`⚠️ ${word} 검색 실패:`, error.message);
-    return null;
-  }
-}
-
-function formatWordMessage(wordData) {
-  if (!wordData) return null;
-
-  const word = wordData.word;
-  const phonetic = wordData.phonetic || wordData.phonetics?.[0]?.text || 'N/A';
-
-  // 첫 번째 의미 가져오기
-  const firstMeaning = wordData.meanings?.[0];
-  const partOfSpeech = firstMeaning?.partOfSpeech || '';
-  const definition =
-    firstMeaning?.definitions?.[0]?.definition || 'No definition available';
-  const example = firstMeaning?.definitions?.[0]?.example || null;
-
-  let message = `📖 *단어:* ${word}`;
-  if (partOfSpeech) message += ` _(${partOfSpeech})_`;
-  message += `\n🔊 *발음:* ${phonetic}`;
-  message += `\n💡 *뜻:* ${definition}`;
-
-  if (example) {
-    message += `\n✍️ *예문:* _"${example}"_`;
-  }
-
-  // 추가 뜻들도 간단히 표시
-  if (firstMeaning?.definitions?.length > 1) {
-    const otherDefs = firstMeaning.definitions.slice(1, 3); // 최대 2개 더
-    otherDefs.forEach((def, idx) => {
-      message += `\n   ${idx + 2}. ${def.definition}`;
-    });
-  }
-
-  return message;
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 async function sendDailyWord() {
   try {
-    console.log('📚 오늘의 단어 선택 중...');
+    console.log('🤖 ChatGPT에게 단어 요청 중...');
 
-    // 날짜 기반으로 단어 선택 (매일 다른 단어)
-    const today = new Date();
-    const dayOfYear = Math.floor(
-      (today - new Date(today.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24
-    );
-    const selectedWord = wordList[dayOfYear % wordList.length];
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'user',
+          content: `오늘의 실용적인 영어 표현 1개를 추천해줘.
 
-    console.log(`🔍 "${selectedWord}" 검색 중...`);
+형식:
+📖 표현: [영어 단어 또는 숙어]
+🔊 발음: [발음기호]
+💡 뜻: [한국어 뜻]
+🎭 대화 예문 (상황극):
+   A: [영어 대화 1]
+   B: [영어 대화 2]
+   A: [영어 대화 3]
+   B: [영어 대화 4]
+   
+   A: [한글 번역 1]
+   B: [한글 번역 2]
+   A: [한글 번역 3]
+   B: [한글 번역 4]
+🎯 활용: [어떤 상황에서 쓰면 좋은지]
 
-    // Dictionary API 호출
-    const wordData = await fetchWordDefinition(selectedWord);
+조건:
+- 초급~중급 수준의 일상 표현
+- 일상생활이나 여행에서 실제로 쓸 수 있는 표현
+- 두 사람이 대화하는 상황극 형태
+- 상황 예시: 아침 준비, 외식, 쇼핑, 호텔 체크인, 길 찾기, 카페 주문, 집안일 등
+- 자연스러운 구어체 대화로 작성
+- 매번 다른 표현을 추천해줘
 
-    if (!wordData) {
-      throw new Error('단어 데이터를 가져올 수 없습니다');
-    }
+---
+아래는 예문이야. 
 
-    console.log('✅ 단어 정보 받음');
+🌟 오늘의 영어 표현 (일상회화)
 
-    // 메시지 포맷팅
-    const formattedMessage = formatWordMessage(wordData);
+📖 표현: turn off
+🔊 발음: /tɜːrn ɒf/
+💡 뜻: (전원/가스 등을) 끄다
 
-    if (!formattedMessage) {
-      throw new Error('메시지 포맷팅 실패');
-    }
+🎭 대화 예문 (상황극):
+   A: Did you turn off the gas?
+   B: Oh no, I forgot! I'll go check.
+   A: ...
+   B: ...
 
+   A: 가스불 껐어?
+   B: 아 이런, 깜빡했다! 가서 확인할게.
+
+🎯 활용: 집을 나서기 전 확인할 때, 전기/가스/수도 등을 끄는 상황에서 사용
+
+`,
+        },
+      ],
+    });
+
+    const wordContent = completion.choices[0].message.content;
+
+    console.log('✅ ChatGPT 응답 받음');
     console.log('📤 Slack으로 전송 중...');
 
-    // Slack으로 전송
     await slack.chat.postMessage({
       channel: process.env.SLACK_CHANNEL_ID,
-      text: `🌟 *오늘의 영어 단어*\n\n${formattedMessage}\n\n_출처: Free Dictionary API_`,
+      text: `🌟 *오늘의 영어 표현* (일상회화)\n\n${wordContent}`,
     });
 
     console.log('✅ 전송 완료!');
   } catch (error) {
     console.error('❌ 에러 발생:', error.message);
+
+    if (error.response) {
+      console.error('API 응답:', error.response.data);
+    }
+
     throw error;
   }
 }
