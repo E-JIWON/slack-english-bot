@@ -1,10 +1,12 @@
 name: Daily English Word
 
+# 자동 스케줄 중단됨 (더 이상 사용하지 않음).
+# 다시 켜려면 아래 schedule 블록의 주석을 해제하세요.
 on:
-  schedule:
-    # 매일 오전 8시 (한국시간 = UTC 23:00 전날)
-    - cron: '0 23 * * *'
-  workflow_dispatch: # 수동 실행 가능
+  # schedule:
+  #   # 매일 오전 8시 (한국시간 = UTC 23:00 전날)
+  #   - cron: '0 23 * * *'
+  workflow_dispatch: # 수동 실행만 가능
 
 jobs:
   send-word:
